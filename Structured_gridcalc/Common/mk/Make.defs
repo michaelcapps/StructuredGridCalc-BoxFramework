@@ -1,0 +1,82 @@
+# Makefile include Common/mk/Make.defs.  Generated from Make.defs.in by configure.
+
+SHELL := /bin/sh
+
+#--------------------------------------------------------------------
+# Directories
+#--------------------------------------------------------------------
+
+TOPDIR          := /Users/Mike/Desktop/cppPrograms/Grad510/Structured_cappsm
+
+#-----------------------------------------------------------------------
+# CC        - C compiler (serial)
+# CXX       - C++ compiler
+# SCXX      - C++ compiler (serial)
+# LD        - linker
+# SLD       - Linker (serial)
+#-----------------------------------------------------------------------
+
+CC              := gcc
+CXX             := g++
+SCXX            := g++
+LD              := g++
+SLD             := g++
+
+#--------------------------------------------------------------------
+# CXXFLAGS  - C++ compiler flags
+# CPPFLAGS  - preprocessing flags
+# LDFLAGS   - linker flags
+#--------------------------------------------------------------------
+
+CXXFLAGS        := -g -march=native -std=c++14 -pedantic -Wall -Wno-unused-local-typedefs -Wno-unknown-pragmas -Wno-vla 
+CPPFLAGS        := 
+LDFLAGS         := -lz -lm  
+
+#--------------------------------------------------------------------
+# NVCC       - Nvidia CUDA compiler
+# NVCCFLAGS  - Nvidia CUDA compiler flags
+# PTXASFLAGS - Options for ptxas tool
+#--------------------------------------------------------------------
+
+NVCC            := 
+NVCCFLAGS       := 
+PTXASFLAGS      := 
+
+#-----------------------------------------------------------------------
+# Programs found by configure
+# SED       - stream editor
+# CSHELLCMD - C shell processor
+# AR        - library archiver
+# PERL      - Perl processor
+#-----------------------------------------------------------------------
+
+SED             := sed
+CSHELLCMD       := csh -f -c
+AR              := ar rcs
+PERL            := perl
+DOXYGEN         := doxygen
+
+#-----------------------------------------------------------------------
+# Hard coded programs
+#-----------------------------------------------------------------------
+
+ECHO            = @#
+mkdep           = $(PERL) $(TOPDIR)/Common/mk/mkdep
+mkrev           = $(TOPDIR)/Common/mk/reverse
+mkdox           = $(DOXYGEN) $(TOPDIR)/doc/structured.dox.conf
+
+#-----------------------------------------------------------------------
+# Hard coded file extensions
+#-----------------------------------------------------------------------
+
+_hdr_ext        = H
+_src_ext        = cpp
+_cudasrc_ext    = cu
+_obj_ext        = o
+_lib_ext        = a
+
+#--------------------------------------------------------------------
+# Hard-coded entries
+#--------------------------------------------------------------------
+
+MPITESTRUN      = mpirun -np 2

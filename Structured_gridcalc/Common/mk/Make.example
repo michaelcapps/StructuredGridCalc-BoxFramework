@@ -1,0 +1,115 @@
+
+include $(STRUCTURED_HOME)/Common/mk/Make.defs
+
+#--Are we using the GPU
+
+ifeq (USE_GPU, $(findstring USE_GPU, $(CPPFLAGS)))
+  USEGPU := TRUE
+else
+  USEGPU := FALSE
+endif
+
+_object_prefix    = o/
+_depends_prefix   = d/
+_lib_prefix       = $(STRUCTURED_HOME)/lib/
+
+src_extensions   := .$(_src_ext)
+ifeq (TRUE, $(USEGPU))
+  src_extensions += .$(_cudasrc_ext)
+endif
+
+vpath %.$(_src_ext) $(src_dirs)
+
+#-- Source directories ---------------------------------------------------------
+
+ifneq ($(src_dirs),)
+
+#--list of source files in all the other source directories
+
+  _srcs := $(notdir $(wildcard $(foreach ext,$(src_extensions),$(addsuffix /*$(ext),$(src_dirs)))))
+
+#--add to sources (sort is used to remove duplicates since vpath will pick up
+#--generated sources if they already exist)
+
+  _srcs := $(sort $(_srcs))
+endif
+
+#--the list of dependency files that Make.rules will need to build, including
+#--files in $base_dir
+
+depends := $(addprefix $(_depends_prefix),$(foreach _ext,$(src_extensions),$(subst $(_ext),.d,$(filter %$(_ext),$(_srcs)))))
+
+#-- Base directory -------------------------------------------------------------
+
+#--no files beginning with 'test' are included in the sources
+
+_base_srcs := $(filter-out test% rose_test%,$(notdir $(wildcard $(foreach ext,$(src_extensions),$(addsuffix /*$(ext),$(base_dir))))))
+
+#--add to base sources (sort is used to remove duplicates since vpath will pick
+#--up generated sources if they already exist)
+
+_base_srcs := $(sort $(_base_srcs))
+
+depends += $(addprefix $(_depends_prefix),$(foreach _ext,$(src_extensions),$(subst $(_ext),.d,$(filter %$(_ext),$(_base_srcs)))))
+
+#-- Tests ----------------------------------------------------------------------
+
+#--If not using MPI, delete tmpibase
+
+ifneq (mpi,$(findstring mpi,$(CXX)))
+  tmpibase =
+endif
+
+#--If tbase contains tests, we do expect a cpp file matching each test
+
+_test_srcs := $(addsuffix .$(_src_ext),$(filter test%,$(tbase) $(tmpibase)))
+
+depends += $(addprefix $(_depends_prefix),$(foreach _ext,$(src_extensions),$(subst $(_ext),.d,$(filter %$(_ext),$(_test_srcs)))))
+
+#-- Objects --------------------------------------------------------------------
+
+#--the list of non-base object files that Make.rules will need to build
+
+_objs := $(addprefix $(_object_prefix),$(foreach _ext,$(src_extensions),$(subst $(_ext),.$(_obj_ext),$(filter %$(_ext),$(_srcs)))))
+_base_objs := $(addprefix $(_object_prefix),$(foreach _ext,$(src_extensions),$(subst $(_ext),.$(_obj_ext),$(filter %$(_ext),$(_base_srcs)))))
+_test_objs := $(addprefix $(_object_prefix),$(foreach _ext,$(src_extensions),$(subst $(_ext),.$(_obj_ext),$(filter %$(_ext),$(_test_srcs)))))
+
+#--if building a library, the full library name
+
+ifneq ($(strip $(lbase)),)
+_lbase = $(_lib_prefix)lib$(lbase).$(_lib_ext)
+endif
+
+#--library paths
+
+_libs := $(addprefix $(_lib_prefix)lib,$(addsuffix .$(_lib_ext),$(libnames)))
+
+#--library source directories
+
+_lib_dirs := $(addprefix $(STRUCTURED_HOME)/lib/src/, $(libnames))
+
+#--add libraries to LDFLAGS
+
+ifneq ($(strip $(libnames)),)
+  LDFLAGS += -L$(_lib_prefix) $(addprefix -l,$(libnames))
+endif
+
+#--tell Make.rules to search source directories for include files
+
+CPPFLAGS += $(addprefix -I,$(_lib_dirs)) -I$(base_dir) $(addprefix -I,$(src_dirs))
+
+# This sequence is used to convert CXXFLAGS from space separated to comman
+# separated
+ifeq (TRUE, $(USEGPU))
+  comma := ,
+  space := 
+  space +=
+  # The last word in CXXFLAGS without any space
+  COMMACXXFLAGSSVLST := $(strip $(lastword $(CXXFLAGS)))
+  # Words in CXXFLAGS separated by commas
+  COMMACXXFLAGS2 := $(subst $(space),$(comma),$(CXXFLAGS))
+  # Remove trailing comma
+  COMMACXXFLAGS  := $(subst $(COMMACXXFLAGSSVLST)$(comma),$(COMMACXXFLAGSSVLST),$(COMMACXXFLAGS2))
+endif
+
+include $(STRUCTURED_HOME)/Common/mk/Make.rules

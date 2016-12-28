@@ -1,0 +1,82 @@
+# Makefile include @configure_input@
+
+SHELL := @SHELL@
+
+#--------------------------------------------------------------------
+# Directories
+#--------------------------------------------------------------------
+
+TOPDIR          := @TOPDIR@
+
+#-----------------------------------------------------------------------
+# CC        - C compiler (serial)
+# CXX       - C++ compiler
+# SCXX      - C++ compiler (serial)
+# LD        - linker
+# SLD       - Linker (serial)
+#-----------------------------------------------------------------------
+
+CC              := @SCC@
+CXX             := @CXX@
+SCXX            := @SCXX@
+LD              := @CXX@
+SLD             := @SCXX@
+
+#--------------------------------------------------------------------
+# CXXFLAGS  - C++ compiler flags
+# CPPFLAGS  - preprocessing flags
+# LDFLAGS   - linker flags
+#--------------------------------------------------------------------
+
+CXXFLAGS        := @CXXFLAGS@
+CPPFLAGS        := @CPPFLAGS@
+LDFLAGS         := @LDFLAGS@
+
+#--------------------------------------------------------------------
+# NVCC       - Nvidia CUDA compiler
+# NVCCFLAGS  - Nvidia CUDA compiler flags
+# PTXASFLAGS - Options for ptxas tool
+#--------------------------------------------------------------------
+
+NVCC            := @NVCC@
+NVCCFLAGS       := @NVCCFLAGS@
+PTXASFLAGS      := @PTXASFLAGS@
+
+#-----------------------------------------------------------------------
+# Programs found by configure
+# SED       - stream editor
+# CSHELLCMD - C shell processor
+# AR        - library archiver
+# PERL      - Perl processor
+#-----------------------------------------------------------------------
+
+SED             := @SED@
+CSHELLCMD       := @CSHELLCMD@
+AR              := @AR@
+PERL            := @PERL@
+DOXYGEN         := @DOXYGEN@
+
+#-----------------------------------------------------------------------
+# Hard coded programs
+#-----------------------------------------------------------------------
+
+ECHO            = @#
+mkdep           = $(PERL) $(TOPDIR)/Common/mk/mkdep
+mkrev           = $(TOPDIR)/Common/mk/reverse
+mkdox           = $(DOXYGEN) $(TOPDIR)/doc/structured.dox.conf
+
+#-----------------------------------------------------------------------
+# Hard coded file extensions
+#-----------------------------------------------------------------------
+
+_hdr_ext        = H
+_src_ext        = cpp
+_cudasrc_ext    = cu
+_obj_ext        = o
+_lib_ext        = a
+
+#--------------------------------------------------------------------
+# Hard-coded entries
+#--------------------------------------------------------------------
+
+MPITESTRUN      = mpirun -np 2

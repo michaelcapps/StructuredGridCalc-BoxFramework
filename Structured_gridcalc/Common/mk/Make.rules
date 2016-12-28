@@ -1,0 +1,146 @@
+# Safety for clean ops
+EXTRACLEAN ?= none
+
+# Code
+$(_object_prefix)%.$(_obj_ext) : %.$(_src_ext) $(_depends_prefix)%.d
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -o $@ -c $<
+
+# Cuda code
+$(_object_prefix)%.$(_obj_ext) : %.$(_cudasrc_ext) $(_depends_prefix)%.d
+	$(NVCC) $(NVCCFLAGS) $(CPPFLAGS) -Xcompiler $(COMMACXXFLAGS) $(PTXASFLAGS) -o $@ -c $<
+
+# Dependencies
+$(_depends_prefix)%.d : %.$(_src_ext) .dummy
+	$(ECHO)$(CSHELLCMD) "$(mkdep) $(CPPFLAGS) $< | $(SED) 's%^.*$*\.o[ :]*%o/$*.o $@ : %g' > $@"
+#       If $(mkdep) failed, sed will still make the output file so delete it
+#	if it is empty
+	$(ECHO)if [ ! -s $@ ]; then $(RM) $@; fi
+
+# Cuda dependencies
+$(_depends_prefix)%.d : %.$(_cudasrc_ext) .dummy
+	$(ECHO)$(CSHELLCMD) "$(mkdep) $(CPPFLAGS) $< | $(SED) 's%^.*$*\.o[ :]*%o/$*.o $@ : %g' > $@"
+#       If $(mkdep) failed, sed will still make the output file so delete it
+#	if it is empty
+	$(ECHO)if [ ! -s $@ ]; then $(RM) $@; fi
+
+.PHONY: all lib test example printvars clean
+# These will otherwise be deleted by running 'make run' from the lib directory
+.SECONDARY: $(depends) (_base_objs) $(_objs) $(_test_objs)
+
+# libnames traverses each library first and then we get to the real targets
+all: $(shell $(mkrev) $(libnames))
+	$(ECHO)$(MAKE) --no-print-directory $(_lbase) $(ebase) $(tbase) $(tmpibase)
+
+lib: $(shell $(mkrev) $(libnames))
+	$(ECHO)$(MAKE) --no-print-directory $(_lbase)
+test: $(shell $(mkrev) $(libnames))
+	$(ECHO)$(MAKE) --no-print-directory $(tbase)
+example: $(shell $(mkrev) $(libnames))
+	$(ECHO)$(MAKE) --no-print-directory $(ebase)
+
+# Build a library
+$(_lbase): $(_base_objs) $(_objs)
+	$(ECHO)echo ""
+	$(ECHO)echo "Assembling $(lbase) library"
+	$(ECHO)echo ""
+	$(AR) $@ $^
+	$(ECHO)echo ""
+
+# The example executable
+$(ebase): $(shell $(mkrev) $(_libs)) $(_base_objs) $(_objs)
+	$(ECHO)echo ""
+	$(ECHO)echo "Linking $@ program"
+	$(ECHO)echo ""
+	$(LD) $(CXXFLAGS) -o $@ $(_base_objs) $(_objs) $(LDFLAGS)
+
+# The test executables (each includes its own object)
+test% : $(shell $(mkrev) $(_libs)) $(_base_objs) $(_objs) $(_object_prefix)test%.$(_obj_ext)
+	$(ECHO)echo ""
+	$(ECHO)echo "Linking $@ program"
+	$(ECHO)echo ""
+	$(LD) $(CXXFLAGS) -o $@ $(_base_objs) $(_objs) $(_object_prefix)$@.$(_obj_ext) $(LDFLAGS)
+
+$(libnames):
+	$(ECHO)$(MAKE) --no-print-directory --directory=$(STRUCTURED_HOME)/lib $@
+
+# Used when building ebase (the patsub strips to get the basename)
+$(_libs):
+	$(ECHO)$(MAKE) --no-print-directory --directory=$(STRUCTURED_HOME)/lib $(patsubst $(_lib_prefix)lib%.$(_lib_ext),%,$@)
+
+run: runmpi
+	$(ECHO)if [ "$(ebase)" -o "$(tbase)" ]; then $(MAKE) --no-print-directory $(ebase) $(tbase); fi
+	$(ECHO)echo ""; \
+          err=0; \
+          for x in $(ebase) $(tbase); do \
+          echo "Running $$x ..."; \
+          ./$$x; \
+          stat=$$?; \
+          echo "... $$x finished with status $$stat"; \
+          echo ""; \
+          if [ $$stat -ne 0 ]; then err=$$stat; fi; \
+          done; \
+          exit $$err
+
+runmpi: $(shell $(mkrev) $(libnames))
+	$(ECHO)if [ "$(tmpibase)" ]; then $(MAKE) --no-print-directory $(tmpibase); fi
+	$(ECHO)echo ""; \
+          err=0; \
+          for x in $(tmpibase); do \
+          echo "Running $$x ..."; \
+          echo "$(MPITESTRUN) $$x"; \
+          $(MPITESTRUN) $$x; \
+          stat=$$?; \
+          echo "... $$x finished with status $$stat"; \
+          echo ""; \
+          if [ $$stat -ne 0 ]; then err=$$stat; fi; \
+          done; \
+          exit $$err
+
+printvars:
+	$(ECHO)echo "Home directory      : $(STRUCTURED_HOME)"
+	$(ECHO)echo "Libraries           : $(libnames)"
+	$(ECHO)echo "Source extensions   : $(src_extensions)"
+	$(ECHO)echo "Base directory      : $(base_dir)"
+	$(ECHO)echo "Source directories  : $(src_dirs)"
+	$(ECHO)echo "Sources             : $(_base_srcs) $(_srcs)"
+	$(ECHO)echo "Test sources        : $(_test_srcs)"
+	$(ECHO)echo "Objects             : $(_base_objs) $(_objs)"
+	$(ECHO)echo "Test objects        : $(_test_objs)"
+	$(ECHO)echo "Depends             : $(depends)"
+	$(ECHO)echo "--Variables--"
+	$(ECHO)echo "lbase               : $(lbase)"
+	$(ECHO)echo "ebase               : $(ebase)"
+	$(ECHO)echo "tbase               : $(tbase)"
+	$(ECHO)echo "tmpibase            : $(tmpibase)"
+	$(ECHO)echo "_lib_prefix         : $(_lib_prefix)"
+	$(ECHO)echo "_libs               : $(_libs)"
+	$(ECHO)echo "_lib_dirs           : $(_lib_dirs)"
+	$(ECHO)echo "CXX                 : $(CXX)"
+	$(ECHO)echo "CXXFLAGS            : $(CXXFLAGS)"
+ifeq (TRUE, $(USEGPU))
+	$(ECHO)echo "COMMACXXFLAGS       : $(COMMACXXFLAGS)"
+endif
+	$(ECHO)echo "CPPFLAGS            : $(CPPFLAGS)"
+	$(ECHO)echo "LDFLAGS             : $(LDFLAGS)"
+ifeq (TRUE, $(USEGPU))
+	$(ECHO)echo "NVCC                : $(NVCC)"
+	$(ECHO)echo "NVCCFLAGS           : $(NVCCFLAGS)"
+	$(ECHO)echo "PTXASFLAGS          : $(PTXASFLAGS)"
+endif
+
+.dummy:
+	$(ECHO)mkdir -p $(_object_prefix) $(_depends_prefix)
+	$(ECHO)touch $@
+
+clean:
+	$(ECHO)echo ""
+	$(ECHO)echo "Cleaning $(ebase)$(tbase)$(lbase)..."
+	$(ECHO)echo ""
+	-$(RM) -r $(_object_prefix) $(_depends_prefix) .dummy $(ebase)$(tbase) $(tmpibase)
+	-$(RM) *~ *.orig
+	-$(RM) $(EXTRACLEAN)
+	$(ECHO)echo ""
+
+ifndef NODEPENDS
+-include $(depends)
+endif
